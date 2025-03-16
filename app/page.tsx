@@ -1,46 +1,53 @@
 "use client";
 import Panel from '../components/Panel';
-import { motion, PanInfo } from 'framer-motion';
-import { useRef, useState } from 'react';
+import { motion, PanInfo, useSpring } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+
+const GUTTER_SIZE = 8;
+const TOTAL_GUTTER_COUNT = 3;
 
 const containerVariants = {
   hidden: { scale: 0.95 },
-  visible: {
-    scale: 1,
-    transition: {
-      duration: 0.3,
-      when: 'beforeChildren',
-      staggerChildren: 0.1,
-    },
-  },
+  visible: { scale: 1, transition: { duration: 0.3, when: 'beforeChildren', staggerChildren: 0.1 } },
 };
 
 export default function Home() {
   const [leftWidth, setLeftWidth] = useState(50);
   const containerRef = useRef<HTMLDivElement>(null);
+  const springWidth = useSpring(leftWidth, { stiffness: 300, damping: 30 });
 
-  const handleDrag = (
-    event: MouseEvent | TouchEvent | PointerEvent,
-    info: PanInfo
-  ) => {
+  useEffect(() => {
+    springWidth.set(leftWidth);
+  }, [leftWidth, springWidth]);
+
+  const handleDrag = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const containerWidth = containerRef.current?.offsetWidth || 1;
-    const deltaPercentage = (info.delta.x / containerWidth) * 100;
-    const newLeftWidth = Math.max(10, Math.min(90, leftWidth + deltaPercentage));
+    const totalGutterWidth = GUTTER_SIZE * TOTAL_GUTTER_COUNT;
+    const contentWidth = containerWidth - totalGutterWidth;
+    const deltaPercentage = (info.delta.x / contentWidth) * 100;
+    const newLeftWidth = Math.max(25, Math.min(75, leftWidth + deltaPercentage));
     setLeftWidth(newLeftWidth);
+    springWidth.set(newLeftWidth);
   };
 
-  const resetWidth = () => setLeftWidth(50);
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const currentWidth = springWidth.get();
+    const snappedWidth = Math.max(25, Math.min(75, currentWidth));
+    springWidth.set(snappedWidth);
+    setLeftWidth(snappedWidth);
+  };
 
-  const containerWidth = containerRef.current?.offsetWidth || 0;
-  const dragConstraints = {
-    left: -(containerWidth * 0.4),
-    right: containerWidth * 0.4,
+  const getDragConstraints = () => {
+    const containerWidth = containerRef.current?.offsetWidth || 0;
+    const totalGutterWidth = GUTTER_SIZE * TOTAL_GUTTER_COUNT;
+    const contentWidth = containerWidth - totalGutterWidth;
+    return { left: -(contentWidth * 0.25), right: contentWidth * 0.25 };
   };
 
   return (
     <motion.main
       ref={containerRef}
-      className="flex flex-col md:flex-row flex-grow"
+      className="flex flex-col md:flex-row flex-grow gap-2 bg-gray-100 "  // Removed p-2
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -48,21 +55,28 @@ export default function Home() {
       <Panel
         title="Editor Panel"
         content="Write your JavaScript here"
-        style={{ flexBasis: `${leftWidth}%` }}
+        style={{ flexBasis: `calc(${springWidth}% - 4px)` }}
       />
       <motion.div
-        className="w-full md:w-px h-px md:h-full bg-gray-400 cursor-col-resize"
+        className="w-full md:w-2 h-px md:h-full bg-gray-400 cursor-col-resize"
         drag="x"
-        dragConstraints={dragConstraints}
+        dragConstraints={getDragConstraints()}
         onDrag={handleDrag}
+        onDragEnd={handleDragEnd}
+        whileHover={{ backgroundColor: '#6b7280' }}
+        whileDrag={{ scale: 1.2, backgroundColor: '#6b7280' }}
+        transition={{ type: 'spring', stiffness: 500, damping: 25 }}
       />
       <Panel
         title="Output Panel"
         content="See your results here"
-        style={{ flexBasis: `${100 - leftWidth}%` }}
+        style={{ flexBasis: `calc(${100 - springWidth}% - 4px)` }}
       />
       <button
-        onClick={resetWidth}
+        onClick={() => {
+          setLeftWidth(50);
+          springWidth.set(50);
+        }}
         className="md:hidden p-2 bg-blue-500 text-white rounded mt-2"
       >
         Reset Panels (Mobile)

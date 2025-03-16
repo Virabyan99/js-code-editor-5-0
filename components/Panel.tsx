@@ -10,10 +10,10 @@ interface PanelProps {
 export default function Panel({ title, content, style }: PanelProps) {
   return (
     <motion.div
-      className="flex flex-col items-center justify-center h-full bg-gray-200 p-4 overflow-hidden"
+      className="flex flex-col items-center justify-center h-full md:w-full w-auto bg-white shadow-md rounded-md p-4 overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 1 }}
       layout
       style={style}
     >
